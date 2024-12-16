@@ -3,17 +3,73 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Content Analyzer</title>
+    <title>Content Analyzer Service</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div class="container">
-        <h1>Content Analyzer</h1>
-        <input id="url-input" type="text" placeholder="Enter URL" />
-        <button id="analyze-btn">Analyze</button>
-        <div id="results"></div>
+        <h1>Content Analysis Service</h1>
+        
+        <form id="content-analysis-form">
+            <input 
+                id="url-input" 
+                type="url" 
+                name="url" 
+                placeholder="Enter URL to analyze" 
+                required 
+                pattern="https?://.*"
+            />
+            <button type="submit" id="analyze-btn">Perform Analysis</button>
+        </form>
+
+        <div id="analysis-results" class="results-container">
+            <h2>Analysis Breakdown</h2>
+            <div class="score-categories">
+                <div class="score-category" data-category="Engagement">
+                    <span class="category-label">Engagement</span>
+                    <span class="category-score" id="engagement-score">-</span>
+                </div>
+                <div class="score-category" data-category="Accessibility">
+                    <span class="category-label">Accessibility</span>
+                    <span class="category-score" id="accessibility-score">-</span>
+                </div>
+                <div class="score-category" data-category="Visual Design">
+                    <span class="category-label">Visual Design</span>
+                    <span class="category-score" id="visual-design-score">-</span>
+                </div>
+                <div class="score-category" data-category="Content Depth">
+                    <span class="category-label">Content Depth</span>
+                    <span class="category-score" id="content-depth-score">-</span>
+                </div>
+                <div class="score-category" data-category="Innovation">
+                    <span class="category-label">Innovation</span>
+                    <span class="category-score" id="innovation-score">-</span>
+                </div>
+                <div class="score-category" data-category="Performance">
+                    <span class="category-label">Performance</span>
+                    <span class="category-score" id="performance-score">-</span>
+                </div>
+                <div class="score-category" data-category="User Feedback">
+                    <span class="category-label">User Feedback</span>
+                    <span class="category-score" id="user-feedback-score">-</span>
+                </div>
+                <div class="score-category" data-category="Scalability">
+                    <span class="category-label">Scalability</span>
+                    <span class="category-score" id="scalability-score">-</span>
+                </div>
+            </div>
+
+            <div class="total-score-container">
+                <h3>Total Score</h3>
+                <span id="total-score" class="total-score">-</span>
+            </div>
+
+            <div id="error-message" class="error-container" hidden>
+                <p>Error processing the URL. Please try again.</p>
+            </div>
+        </div>
     </div>
+
     <script src="script.js"></script>
 </body>
 </html>
-
