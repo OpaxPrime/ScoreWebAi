@@ -1,0 +1,28 @@
+document.getElementById("analyze-btn").addEventListener("click", () => {
+    const url = document.getElementById("url-input").value;
+    const resultsDiv = document.getElementById("results");
+
+    resultsDiv.innerHTML = "Analyzing...";
+
+    fetch("http://localhost:8080", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+    })
+        .then((response) => response.json())
+        .then((data) => {
+            resultsDiv.innerHTML = `<h3>Total Score: ${data.total_score}/10</h3>`;
+            resultsDiv.innerHTML += "<ul>";
+            for (const [category, score] of Object.entries(data.scores)) {
+                resultsDiv.innerHTML += `<li>${category}: ${score}</li>`;
+            }
+            resultsDiv.innerHTML += "</ul>";
+        })
+        .catch((err) => {
+            resultsDiv.innerHTML = "Error analyzing content. Please try again.";
+            console.error(err);
+        });
+});
+
+
+
