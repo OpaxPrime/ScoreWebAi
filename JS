@@ -44,15 +44,19 @@ async function analyzeWebsite(url) {
             }
         });
 
+        if (!response.data) {
+            throw new Error('Empty response from the website. It may not be compatible.');
+        }
+
         const $ = cheerio.load(response.data);
 
         // Calculate scores...
         const scores = {
-            'Performance': 2, // Simplified scoring for testing
-            'SEO': 2,
-            'Content': 2,
-            'Mobile': 2,
-            'Security': url.startsWith('https') ? 2 : 0
+            'Performance': Math.random() * 10, // Example scoring logic
+            'SEO': Math.random() * 10,
+            'Content': Math.random() * 10,
+            'Mobile': Math.random() * 10,
+            'Security': url.startsWith('https') ? 10 : 0
         };
 
         return {
@@ -63,7 +67,7 @@ async function analyzeWebsite(url) {
 
     } catch (error) {
         console.error('Analysis error:', error.message); // Debug log
-        
+
         if (error.code === 'ECONNREFUSED') {
             throw new Error('Could not connect to the website. Please check if the URL is correct.');
         }
