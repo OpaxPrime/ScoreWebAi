@@ -1,28 +1,122 @@
-document.getElementById("analyze-btn").addEventListener("click", () => {
-    const url = document.getElementById("url-input").value;
-    const resultsDiv = document.getElementById("results");
+const express = require('express');
+const cors = require('cors');
+const axios = require('axios');
+const cheerio = require('cheerio');
 
-    resultsDiv.innerHTML = "Analyzing...";
+const app = express();
 
-    fetch("http://localhost:8080", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url }),
-    })
-        .then((response) => response.json())
-        .then((data) => {
-            resultsDiv.innerHTML = `<h3>Total Score: ${data.total_score}/10</h3>`;
-            resultsDiv.innerHTML += "<ul>";
-            for (const [category, score] of Object.entries(data.scores)) {
-                resultsDiv.innerHTML += `<li>${category}: ${score}</li>`;
+// Enable CORS
+app.use(cors());
+app.use(express.json());
+
+async function analyzeWebsite(url) {
+    try {
+        // Start timing the request
+        const startTime = Date.now();
+        
+        // Fetch website content
+        const response = await axios.get(url, {
+            timeout: 10000,
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
             }
-            resultsDiv.innerHTML += "</ul>";
-        })
-        .catch((err) => {
-            resultsDiv.innerHTML = "Error analyzing content. Please try again.";
-            console.error(err);
         });
+        
+        const loadTime = Date.now() - startTime;
+        const $ = cheerio.load(response.data);
+
+        // Calculate various scores
+        
+        // Performance Score (0-2 points)
+        const performanceScore = Math.min(2, Math.max(0, 2 - (loadTime / 1000)));
+
+        // SEO Score (0-2 points)
+        let seoScore = 0;
+        if ($('title').length > 0) seoScore += 0.5;
+        if ($('meta[description]').length > 0) seoScore += 0.5;
+        if ($('h1').length > 0) seoScore += 0.5;
+        if ($('img[alt]').length === $('img').length && $('img').length > 0) seoScore += 0.5;
+
+        // Content Score (0-2 points)
+        const wordCount = $('body').text().trim().split(/\s+/).length;
+        const contentScore = Math.min(2, wordCount / 500);
+
+        // Mobile Responsiveness Score (0-2 points)
+        let mobileScore = 0;
+        const hasViewport = $('meta[name="viewport"]').length > 0;
+        const hasMediaQueries = response.data.includes('@media');
+        if (hasViewport) mobileScore += 1;
+        if (hasMediaQueries) mobileScore += 1;
+
+        // Security Score (0-2 points)
+        let securityScore = 0;
+        const hasHttps = url.startsWith('https');
+        const hasSecurityHeaders = response.headers['strict-transport-security'] || 
+                                 response.headers['content-security-policy'];
+        if (hasHttps) securityScore += 1;
+        if (hasSecurityHeaders) securityScore += 1;
+
+        // Compile all scores
+        const scores = {
+            'Performance': Number(performanceScore.toFixed(1)),
+            'SEO Optimization': Number(seoScore.toFixed(1)),
+            'Content Quality': Number(contentScore.toFixed(1)),
+            'Mobile Responsiveness': Number(mobileScore.toFixed(1)),
+            'Security': Number(securityScore.toFixed(1))
+        };
+
+        // Calculate total score
+        const totalScore = Number(Object.values(scores).reduce((a, b) => a + b, 0).toFixed(1));
+
+        return {
+            total_score: totalScore,
+            scores: scores,
+            details: {
+                loadTime: `${loadTime}ms`,
+                wordCount: wordCount,
+                hasHttps: hasHttps,
+                hasMobileViewport: hasViewport
+            }
+        };
+    } catch (error) {
+        throw new Error(`Analysis failed: ${error.message}`);
+    }
+}
+
+// Main analysis endpoint
+app.post('/analyze', async (req, res) => {
+    try {
+        const { url } = req.body;
+        
+        if (!url) {
+            return res.status(400).json({ 
+                error: 'URL is required' 
+            });
+        }
+
+        const result = await analyzeWebsite(url);
+        res.json(result);
+
+    } catch (error) {
+        res.status(500).json({ 
+            error: error.message 
+        });
+    }
 });
 
+// Test endpoint
+app.get('/test', (req, res) => {
+    res.json({ 
+        status: 'Server is running',
+        timestamp: new Date().toISOString()
+    });
+});
+
+// Start server
+const PORT = process.env.PORT || 8080;
+app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+    console.log(`Test server: http://localhost:${PORT}/test`);
+});
 
 
