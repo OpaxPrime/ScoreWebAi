@@ -5,118 +5,104 @@ const cheerio = require('cheerio');
 
 const app = express();
 
-// Enable CORS
-app.use(cors());
+// Enable CORS for all origins
+app.use(cors({
+    origin: '*',
+    methods: ['POST', 'GET'],
+    allowedHeaders: ['Content-Type']
+}));
+
 app.use(express.json());
 
-async function analyzeWebsite(url) {
+function validateUrl(url) {
     try {
-        // Start timing the request
-        const startTime = Date.now();
-        
-        // Fetch website content
-        const response = await axios.get(url, {
-            timeout: 10000,
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-            }
-        });
-        
-        const loadTime = Date.now() - startTime;
-        const $ = cheerio.load(response.data);
-
-        // Calculate various scores
-        
-        // Performance Score (0-2 points)
-        const performanceScore = Math.min(2, Math.max(0, 2 - (loadTime / 1000)));
-
-        // SEO Score (0-2 points)
-        let seoScore = 0;
-        if ($('title').length > 0) seoScore += 0.5;
-        if ($('meta[description]').length > 0) seoScore += 0.5;
-        if ($('h1').length > 0) seoScore += 0.5;
-        if ($('img[alt]').length === $('img').length && $('img').length > 0) seoScore += 0.5;
-
-        // Content Score (0-2 points)
-        const wordCount = $('body').text().trim().split(/\s+/).length;
-        const contentScore = Math.min(2, wordCount / 500);
-
-        // Mobile Responsiveness Score (0-2 points)
-        let mobileScore = 0;
-        const hasViewport = $('meta[name="viewport"]').length > 0;
-        const hasMediaQueries = response.data.includes('@media');
-        if (hasViewport) mobileScore += 1;
-        if (hasMediaQueries) mobileScore += 1;
-
-        // Security Score (0-2 points)
-        let securityScore = 0;
-        const hasHttps = url.startsWith('https');
-        const hasSecurityHeaders = response.headers['strict-transport-security'] || 
-                                 response.headers['content-security-policy'];
-        if (hasHttps) securityScore += 1;
-        if (hasSecurityHeaders) securityScore += 1;
-
-        // Compile all scores
-        const scores = {
-            'Performance': Number(performanceScore.toFixed(1)),
-            'SEO Optimization': Number(seoScore.toFixed(1)),
-            'Content Quality': Number(contentScore.toFixed(1)),
-            'Mobile Responsiveness': Number(mobileScore.toFixed(1)),
-            'Security': Number(securityScore.toFixed(1))
-        };
-
-        // Calculate total score
-        const totalScore = Number(Object.values(scores).reduce((a, b) => a + b, 0).toFixed(1));
-
-        return {
-            total_score: totalScore,
-            scores: scores,
-            details: {
-                loadTime: `${loadTime}ms`,
-                wordCount: wordCount,
-                hasHttps: hasHttps,
-                hasMobileViewport: hasViewport
-            }
-        };
-    } catch (error) {
-        throw new Error(`Analysis failed: ${error.message}`);
+        new URL(url);
+        return true;
+    } catch {
+        return false;
     }
 }
 
-// Main analysis endpoint
+async function analyzeWebsite(url) {
+    // Validate URL format
+    if (!validateUrl(url)) {
+        throw new Error('Invalid URL format. Please include http:// or https://');
+    }
+
+    try {
+        console.log(`Attempting to analyze: ${url}`); // Debug log
+
+        const response = await axios.get(url, {
+            timeout: 15000, // Increased timeout
+            maxRedirects: 5,
+            validateStatus: status => status < 400, // Accept any status < 400
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.5',
+                'Connection': 'keep-alive',
+            }
+        });
+
+        const $ = cheerio.load(response.data);
+
+        // Calculate scores...
+        const scores = {
+            'Performance': 2, // Simplified scoring for testing
+            'SEO': 2,
+            'Content': 2,
+            'Mobile': 2,
+            'Security': url.startsWith('https') ? 2 : 0
+        };
+
+        return {
+            total_score: Object.values(scores).reduce((a, b) => a + b, 0),
+            scores,
+            url: url
+        };
+
+    } catch (error) {
+        console.error('Analysis error:', error.message); // Debug log
+        
+        if (error.code === 'ECONNREFUSED') {
+            throw new Error('Could not connect to the website. Please check if the URL is correct.');
+        }
+        if (error.code === 'ETIMEDOUT') {
+            throw new Error('Website took too long to respond. Please try again.');
+        }
+        if (error.response && error.response.status === 403) {
+            throw new Error('Website blocked our access. Try a different website.');
+        }
+        throw new Error(`Failed to analyze website: ${error.message}`);
+    }
+}
+
 app.post('/analyze', async (req, res) => {
     try {
+        console.log('Received request:', req.body); // Debug log
+
         const { url } = req.body;
         
         if (!url) {
-            return res.status(400).json({ 
-                error: 'URL is required' 
-            });
+            return res.status(400).json({ error: 'URL is required' });
         }
 
         const result = await analyzeWebsite(url);
         res.json(result);
 
     } catch (error) {
-        res.status(500).json({ 
-            error: error.message 
-        });
+        console.error('Server error:', error.message); // Debug log
+        res.status(500).json({ error: error.message });
     }
 });
 
 // Test endpoint
 app.get('/test', (req, res) => {
-    res.json({ 
-        status: 'Server is running',
-        timestamp: new Date().toISOString()
-    });
+    res.json({ status: 'Server is running' });
 });
 
-// Start server
-const PORT = process.env.PORT || 8080;
+const PORT = 8080;
 app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-    console.log(`Test server: http://localhost:${PORT}/test`);
+    console.log(`Server running at http://localhost:${PORT}`);
+    console.log('Try the test endpoint at http://localhost:8080/test');
 });
-
-
