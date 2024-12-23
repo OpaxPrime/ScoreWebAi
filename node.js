@@ -1,73 +1,301 @@
-const express = require('express');
-const cors = require('cors');
-const axios = require('axios');
-const cheerio = require('cheerio');
-
-const app = express();
-
-// Enable CORS properly
-app.use(cors());
-app.use(express.json());
-
-app.post('/analyze', async (req, res) => {
-    try {
-        const { url } = req.body;
-        
-        if (!url) {
-            return res.status(400).json({ error: 'URL is required' });
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Website Analyzer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
 
-        // Fetch the website content
-        const response = await axios.get(url, {
-            timeout: 10000,
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        body {
+            background: #f0f2f5;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 800px;
+            padding: 30px;
+        }
+
+        .title {
+            text-align: center;
+            color: #1a1a1a;
+            font-size: 2rem;
+            margin-bottom: 30px;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .url-input {
+            flex: 1;
+            padding: 12px 15px;
+            border: 2px solid #e1e1e1;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        .url-input:focus {
+            outline: none;
+            border-color: #007bff;
+        }
+
+        .analyze-btn {
+            padding: 12px 25px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .analyze-btn:hover {
+            background: #0056b3;
+        }
+
+        .analyze-btn:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+        }
+
+        .error {
+            background: #ffe6e6;
+            border: 1px solid #ff8080;
+            color: #cc0000;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .results {
+            display: none;
+        }
+
+        .score-card {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .total-score {
+            font-size: 3rem;
+            font-weight: bold;
+            color: #007bff;
+        }
+
+        .score-label {
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .scores-grid {
+            display: grid;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .score-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: transform 0.2s;
+        }
+
+        .score-item:hover {
+            transform: translateY(-2px);
+        }
+
+        .category {
+            font-weight: 500;
+            color: #333;
+        }
+
+        .score {
+            font-weight: bold;
+        }
+
+        .score.good {
+            color: #28a745;
+        }
+
+        .score.average {
+            color: #ffc107;
+        }
+
+        .score.poor {
+            color: #dc3545;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #007bff;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
             }
-        });
 
-        const $ = cheerio.load(response.data);
+            .input-group {
+                flex-direction: column;
+            }
 
-        // Scoring logic
-        let scores = {
-            'Performance': 0,
-            'SEO': 0,
-            'Content': 0,
-            'Mobile': 0,
-            'Security': url.startsWith('https') ? 2 : 0
-        };
+            .analyze-btn {
+                width: 100%;
+            }
 
-        // Performance (example: check for inline styles)
-        scores.Performance = $('style').length > 0 ? 1 : 2;
+            .title {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="title">Website Analyzer</h1>
+        
+        <div class="input-group">
+            <input 
+                type="url" 
+                class="url-input" 
+                id="url-input"
+                placeholder="Enter website URL (e.g., https://example.com)" 
+            >
+            <button 
+                class="analyze-btn" 
+                id="analyze-btn"
+                onclick="analyzeWebsite()"
+            >
+                Analyze
+            </button>
+        </div>
 
-        // SEO (example: check for meta description and title tag)
-        scores.SEO = ($('meta[name="description"]').attr('content') ? 1 : 0) +
-                     ($('title').text() ? 1 : 0);
+        <div class="error" id="error"></div>
 
-        // Content (example: check if there are images with alt attributes)
-        scores.Content = $('img[alt]').length > 0 ? 2 : 1;
+        <div class="loading" id="loading">
+            <div class="loading-spinner"></div>
+            <div>Analyzing website...</div>
+        </div>
 
-        // Mobile (example: check viewport meta tag for responsiveness)
-        scores.Mobile = $('meta[name="viewport"]').attr('content') ? 2 : 0;
+        <div class="results" id="results">
+            <div class="score-card">
+                <div class="total-score">0/10</div>
+                <div class="score-label">Overall Score</div>
+            </div>
+            <div class="scores-grid" id="scores-grid"></div>
+        </div>
+    </div>
 
-        const total_score = Object.values(scores).reduce((a, b) => a + b, 0);
+    <script>
+        async function analyzeWebsite() {
+            const urlInput = document.getElementById('url-input');
+            const analyzeBtn = document.getElementById('analyze-btn');
+            const errorDiv = document.getElementById('error');
+            const loadingDiv = document.getElementById('loading');
+            const resultsDiv = document.getElementById('results');
+            const scoresGrid = document.getElementById('scores-grid');
 
-        res.json({
-            total_score,
-            scores
-        });
+            // Reset UI
+            errorDiv.style.display = 'none';
+            resultsDiv.style.display = 'none';
+            loadingDiv.style.display = 'none';
 
-    } catch (error) {
-        console.error('Error:', error.message);
-        res.status(500).json({ error: 'Failed to analyze website' });
-    }
-});
+            // Validate URL
+            if (!urlInput.value) {
+                errorDiv.textContent = 'Please enter a URL';
+                errorDiv.style.display = 'block';
+                return;
+            }
 
-// Test endpoint
-app.get('/test', (req, res) => {
-    res.json({ status: 'Server is running' });
-});
+            try {
+                new URL(urlInput.value);
+            } catch {
+                errorDiv.textContent = 'Please enter a valid URL (including http:// or https://)';
+                errorDiv.style.display = 'block';
+                return;
+            }
 
-const PORT = 8080;
-app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-});
+            try {
+                // Show loading state
+                loadingDiv.style.display = 'block';
+                analyzeBtn.disabled = true;
+
+                const response = await fetch('http://localhost:8080/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: urlInput.value }),
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to analyze website');
+                }
+
+                const data = await response.json();
+                
+                // Update total score
+                document.querySelector('.total-score').textContent = `${data.total_score}/10`;
+
+                // Update individual scores
+                scoresGrid.innerHTML = '';
+                Object.entries(data.scores).forEach(([category, score]) => {
+                    const scoreClass = score >= 1.5 ? 'good' : score >= 1 ? 'average' : 'poor';
+                    scoresGrid.innerHTML += `
+                        <div class="score-item">
+                            <span class="category">${category}</span>
+                            <span class="score ${scoreClass}">${score}/2</span>
+                        </div>
+                    `;
+                });
+
+                // Show results
+                resultsDiv.style.display = 'block';
+
+            } catch (error) {
+                errorDiv.textContent = error.message;
+                errorDiv.style.display = 'block';
+            } finally {
+                loadingDiv.style.display = 'none';
+                analyzeBtn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
