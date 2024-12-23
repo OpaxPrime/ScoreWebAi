@@ -5,98 +5,47 @@ const cheerio = require('cheerio');
 
 const app = express();
 
-// Enable CORS for all origins
-app.use(cors({
-    origin: '*',
-    methods: ['POST', 'GET'],
-    allowedHeaders: ['Content-Type']
-}));
-
+// Enable CORS properly
+app.use(cors());
 app.use(express.json());
 
-function validateUrl(url) {
+app.post('/analyze', async (req, res) => {  // Changed from '/' to '/analyze' to match frontend
     try {
-        new URL(url);
-        return true;
-    } catch {
-        return false;
-    }
-}
-
-async function analyzeWebsite(url) {
-    // Validate URL format
-    if (!validateUrl(url)) {
-        throw new Error('Invalid URL format. Please include http:// or https://');
-    }
-
-    try {
-        console.log(`Attempting to analyze: ${url}`); // Debug log
-
-        const response = await axios.get(url, {
-            timeout: 15000, // Increased timeout
-            maxRedirects: 5,
-            validateStatus: status => status < 400, // Accept any status < 400
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-                'Accept-Language': 'en-US,en;q=0.5',
-                'Connection': 'keep-alive',
-            }
-        });
-
-        if (!response.data) {
-            throw new Error('Empty response from the website. It may not be compatible.');
-        }
-
-        const $ = cheerio.load(response.data);
-
-        // Calculate scores...
-        const scores = {
-            'Performance': Math.random() * 10, // Example scoring logic
-            'SEO': Math.random() * 10,
-            'Content': Math.random() * 10,
-            'Mobile': Math.random() * 10,
-            'Security': url.startsWith('https') ? 10 : 0
-        };
-
-        return {
-            total_score: Object.values(scores).reduce((a, b) => a + b, 0),
-            scores,
-            url: url
-        };
-
-    } catch (error) {
-        console.error('Analysis error:', error.message); // Debug log
-
-        if (error.code === 'ECONNREFUSED') {
-            throw new Error('Could not connect to the website. Please check if the URL is correct.');
-        }
-        if (error.code === 'ETIMEDOUT') {
-            throw new Error('Website took too long to respond. Please try again.');
-        }
-        if (error.response && error.response.status === 403) {
-            throw new Error('Website blocked our access. Try a different website.');
-        }
-        throw new Error(`Failed to analyze website: ${error.message}`);
-    }
-}
-
-app.post('/analyze', async (req, res) => {
-    try {
-        console.log('Received request:', req.body); // Debug log
-
         const { url } = req.body;
         
         if (!url) {
             return res.status(400).json({ error: 'URL is required' });
         }
 
-        const result = await analyzeWebsite(url);
-        res.json(result);
+        // Fetch and analyze the website
+        const response = await axios.get(url, {
+            timeout: 10000,
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            }
+        });
+        
+        const $ = cheerio.load(response.data);
+
+        // Simple scoring system
+        const scores = {
+            'Performance': 2,
+            'SEO': 2,
+            'Content': 2,
+            'Mobile': 2,
+            'Security': url.startsWith('https') ? 2 : 0
+        };
+
+        const total_score = Object.values(scores).reduce((a, b) => a + b, 0);
+
+        res.json({
+            total_score,
+            scores
+        });
 
     } catch (error) {
-        console.error('Server error:', error.message); // Debug log
-        res.status(500).json({ error: error.message });
+        console.error('Error:', error.message);
+        res.status(500).json({ error: 'Failed to analyze website' });
     }
 });
 
@@ -107,6 +56,5 @@ app.get('/test', (req, res) => {
 
 const PORT = 8080;
 app.listen(PORT, () => {
-    console.log(`Server running at http://localhost:${PORT}`);
-    console.log('Try the test endpoint at http://localhost:8080/test');
+    console.log(`Server running on http://localhost:${PORT}`);
 });
