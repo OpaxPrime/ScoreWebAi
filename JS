@@ -9,7 +9,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-app.post('/analyze', async (req, res) => {  // Changed from '/' to '/analyze' to match frontend
+app.post('/analyze', async (req, res) => {
     try {
         const { url } = req.body;
         
@@ -17,24 +17,37 @@ app.post('/analyze', async (req, res) => {  // Changed from '/' to '/analyze' to
             return res.status(400).json({ error: 'URL is required' });
         }
 
-        // Fetch and analyze the website
+        // Fetch the website content
         const response = await axios.get(url, {
             timeout: 10000,
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
             }
         });
-        
+
         const $ = cheerio.load(response.data);
 
-        // Simple scoring system
-        const scores = {
-            'Performance': 2,
-            'SEO': 2,
-            'Content': 2,
-            'Mobile': 2,
+        // Scoring logic
+        let scores = {
+            'Performance': 0,
+            'SEO': 0,
+            'Content': 0,
+            'Mobile': 0,
             'Security': url.startsWith('https') ? 2 : 0
         };
+
+        // Performance (example: check for inline styles)
+        scores.Performance = $('style').length > 0 ? 1 : 2;
+
+        // SEO (example: check for meta description and title tag)
+        scores.SEO = ($('meta[name="description"]').attr('content') ? 1 : 0) +
+                     ($('title').text() ? 1 : 0);
+
+        // Content (example: check if there are images with alt attributes)
+        scores.Content = $('img[alt]').length > 0 ? 2 : 1;
+
+        // Mobile (example: check viewport meta tag for responsiveness)
+        scores.Mobile = $('meta[name="viewport"]').attr('content') ? 2 : 0;
 
         const total_score = Object.values(scores).reduce((a, b) => a + b, 0);
 
