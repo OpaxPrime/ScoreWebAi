@@ -1,1 +1,89 @@
-d
+/* General Styles */
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f4f4f9;
+    color: #333;
+    line-height: 1.6;
+}
+
+/* Header Section */
+header {
+    background: #5a67d8;
+    color: white;
+    padding: 10px 20px;
+    text-align: center;
+    font-size: 1.5rem;
+}
+
+/* Form Section */
+form {
+    max-width: 600px;
+    margin: 20px auto;
+    padding: 20px;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+form input[type="text"] {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 10px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    font-size: 1rem;
+}
+
+form button {
+    width: 100%;
+    background: #5a67d8;
+    color: white;
+    border: none;
+    padding: 10px;
+    font-size: 1rem;
+    cursor: pointer;
+    border-radius: 3px;
+    transition: background 0.3s ease;
+}
+
+form button:hover {
+    background: #434190;
+}
+
+/* Results Section */
+.results {
+    max-width: 600px;
+    margin: 20px auto;
+    padding: 20px;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.results h2 {
+    text-align: center;
+    color: #5a67d8;
+    margin-bottom: 20px;
+}
+
+.results p {
+    font-size: 1rem;
+    margin: 10px 0;
+}
+
+/* Footer Section */
+footer {
+    background: #333;
+    color: white;
+    text-align: center;
+    padding: 10px;
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    font-size: 0.9rem;
+}
+
